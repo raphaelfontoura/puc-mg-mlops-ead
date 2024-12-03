@@ -9,6 +9,6 @@ conda activate puc-mlops-ead-environment
 ```
 
 ```bash
-pip freese
+pip freeze
 ```
 
