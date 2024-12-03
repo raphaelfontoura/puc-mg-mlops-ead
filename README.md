@@ -12,3 +12,7 @@ conda activate puc-mlops-ead-environment
 pip freeze
 ```
 
+```bash
+pytest
+```
+

@@ -16,66 +16,71 @@ from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-"""# Definindo funções adicionais"""
-
 def reset_seeds():
    os.environ['PYTHONHASHSEED']=str(42)
    tf.random.set_seed(42)
    np.random.seed(42)
    random.seed(42)
 
-"""# 2 - Fazendo a leitura do dataset e atribuindo às respectivas variáveis"""
+def read_data():
+  data = pd.read_csv('https://raw.githubusercontent.com/renansantosmendes/lectures-cdas-2023/master/fetal_health_reduced.csv')
+  X=data.drop(["fetal_health"], axis=1)
+  y=data["fetal_health"]
+  return X, y
 
-data = pd.read_csv('https://raw.githubusercontent.com/renansantosmendes/lectures-cdas-2023/master/fetal_health_reduced.csv')
+def process_data(X, y):
+  columns_names = list(X.columns)
+  scaler = preprocessing.StandardScaler()
+  X_df = scaler.fit_transform(X)
+  X_df = pd.DataFrame(X_df, columns=columns_names)
 
-"""# 3 - Preparando o dado antes de iniciar o treino do modelo"""
+  X_train, X_test, y_train, y_test = train_test_split(X_df,
+                                                      y,
+                                                      test_size=0.3,
+                                                      random_state=42)
 
-X=data.drop(["fetal_health"], axis=1)
-y=data["fetal_health"]
+  y_train = y_train -1
+  y_test = y_test - 1
+  return X_train, X_test, y_train, y_test
 
-columns_names = list(X.columns)
-scaler = preprocessing.StandardScaler()
-X_df = scaler.fit_transform(X)
-X_df = pd.DataFrame(X_df, columns=columns_names)
+def create_model(X):
 
-X_train, X_test, y_train, y_test = train_test_split(X_df,
-                                                    y,
-                                                    test_size=0.3,
-                                                    random_state=42)
+  reset_seeds()
+  model = Sequential()
+  model.add(InputLayer(input_shape=(X.shape[1], )))
+  model.add(Dense(10, activation='relu'))
+  model.add(Dense(10, activation='relu'))
+  model.add(Dense(3, activation='softmax'))
 
-y_train = y_train -1
-y_test = y_test - 1
+  model.compile(loss='sparse_categorical_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy'])
+  return model
 
-"""# 4 - Criando o modelo e adicionando as camadas"""
+def config_mlflow():  
+  os.environ['MLFLOW_TRACKING_USERNAME']
+  os.environ['MLFLOW_TRACKING_PASSWORD']
+  mlflow.set_tracking_uri('https://dagshub.com/raphaelfontoura/mlops-ead-pucmg.mlflow')
 
-reset_seeds()
-model = Sequential()
-model.add(InputLayer(input_shape=(X_train.shape[1], )))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(3, activation='softmax'))
+  mlflow.tensorflow.autolog(log_models=True,
+                            log_input_examples=True,
+                            log_model_signatures=True)
 
-"""# 5 - Compilando o modelo
 
-"""
-
-model.compile(loss='sparse_categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
-
-os.environ['MLFLOW_TRACKING_USERNAME']
-os.environ['MLFLOW_TRACKING_PASSWORD']
-mlflow.set_tracking_uri('https://dagshub.com/raphaelfontoura/mlops-ead-pucmg.mlflow')
-
-mlflow.tensorflow.autolog(log_models=True,
-                          log_input_examples=True,
-                          log_model_signatures=True)
-
-"""# 6 - Executando o treino do modelo"""
-
-with mlflow.start_run(run_name='experiment_mlops_ead_rcf') as run:
-  model.fit(X_train,
-            y_train,
-            epochs=50,
-            validation_split=0.2,
-            verbose=3)
+def train_model(model, X_train, y_train, is_train=True):
+  with mlflow.start_run(run_name='experiment_mlops_ead_rcf') as run:
+    model.fit(X_train,
+              y_train,
+              epochs=50,
+              validation_split=0.2,
+              verbose=3)
+  if is_train:
+      run_uri = f'runs:/{run.info.run_id}'
+      mlflow.register_model(run_uri, "fetal_health")
+    
+if __name__ == "__main__":
+  X, y = read_data()
+  X_train, X_test, y_train, y_test = process_data(X, y)
+  model = create_model(X_train)
+  config_mlflow()
+  train_model(model, X_train, y_train)
