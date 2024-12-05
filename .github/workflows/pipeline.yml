@@ -5,7 +5,7 @@ on:
   pull_request:
     branches:
     - layers
-    - branch_01
+    - develop
   workflow_dispatch:
   # Allows external webhook trigger
   repository_dispatch:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Test files
         run: |
-          pytest test_train.py
+          pytest train_test.py
 
 #  check_python_code_style:
 #    runs-on: ubuntu-latest
