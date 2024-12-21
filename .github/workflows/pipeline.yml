@@ -78,6 +78,7 @@ jobs:
 
   build_image:
     runs-on: ubuntu-latest
+    environment: main
     needs: [train_pipeline]
     steps:
       - uses: actions/checkout@v2
